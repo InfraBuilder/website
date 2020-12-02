@@ -1,0 +1,49 @@
+stages:
+  - build
+  - deploy-preprod
+  - deploy-prod
+
+build:
+  image: docker:latest
+  stage: build
+  services:
+  - docker:dind  
+
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME"
+  
+  only:
+    refs:
+      - tags
+
+
+deploy-preprod:
+  image: infrabuilder/kubectl:stable
+  stage: deploy-preprod
+  before_script:
+    - kubectl config set-credentials cicd --token=${K8S_TOKEN_PREPROD}
+    - kubectl config set-cluster cluster --server=${K8S_API}
+    - kubectl config set-context default --user=cicd --namespace=website-preprod --cluster=cluster
+    - kubectl config use-context default
+  script:
+    - kubectl set image deploy/infrabuilder-com site="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+  only:
+    refs:
+      - tags
+
+deploy-prod:
+  image: infrabuilder/kubectl:stable
+  stage: deploy-prod
+  before_script:
+    - kubectl config set-credentials cicd --token=${K8S_TOKEN_PREPROD}
+    - kubectl config set-cluster cluster --server=${K8S_API}
+    - kubectl config set-context default --user=cicd --namespace=website --cluster=cluster
+    - kubectl config use-context default
+  script:
+    - kubectl set image deploy/infrabuilder-com site="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}"
+  when: manual
+  only:
+    refs:
+      - tags
