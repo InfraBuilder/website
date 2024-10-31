@@ -7,8 +7,6 @@ build_image:
   image: infrabuilder/kaniko-crane
   before_script:
     - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  dependencies:
-    - notifications
   script:
     - echo "Building Docker image $CONTAINER_IMAGE with Kaniko..."
     - |
