@@ -2,16 +2,22 @@ stages:
   - build
   - deploy-prod
 
-build:
-  image: docker:latest
+build_image:
   stage: build
-  services:
-  - docker:dind  
+  image: infrabuilder/kaniko-crane
+  before_script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  dependencies:
+    - notifications
   script:
-    - sleep 10
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" .
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - echo "Building Docker image $CONTAINER_IMAGE with Kaniko..."
+    - |
+      if crane manifest $CONTAINER_IMAGE >/dev/null; then
+        echo "Image already exists."
+      else
+        /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+        echo "Image built and pushed to registry."
+      fi
 
 deploy-prod:
   image: infrabuilder/kubectl:stable
