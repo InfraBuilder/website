@@ -5,7 +5,7 @@ stages:
 build:
   stage: build
   image:
-    name: infrabuilder/kaniko
+    name: infrabuilder/kaniko:20260113-194026
     entrypoint: [""]
   script:
     - /usr/bin/executor 
